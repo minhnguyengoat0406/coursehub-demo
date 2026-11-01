@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="CourseHub API",
-    version="0.3.0",
-    description="API thuc hanh Buoi 3 - Co so du lieu Web va he thong thong tin",
+    version="0.4.0",
+    description="API thuc hanh Buoi 4 - Transaction, Concurrency va Index",
 )
 
 
@@ -115,7 +115,9 @@ def list_sections(
     sql += " ORDER BY class_id"
 
     with engine.connect() as connection:
-        rows = connection.execute(text(sql)).mappings().all()
+        rows = connection.execute(
+            text(sql)
+        ).mappings().all()
 
     return [dict(row) for row in rows]
 
@@ -184,16 +186,12 @@ def create_enrollment(
         WHERE id = :student_id
     """
 
+    # Khoa dong class_sections de tranh race condition.
     section_sql = """
-        SELECT
-            cs.id,
-            cs.capacity,
-            COUNT(e.student_id) AS enrolled
-        FROM class_sections AS cs
-        LEFT JOIN enrollments AS e
-            ON e.class_section_id = cs.id
-        WHERE cs.id = :class_section_id
-        GROUP BY cs.id, cs.capacity
+        SELECT id, capacity
+        FROM class_sections
+        WHERE id = :class_section_id
+        FOR UPDATE
     """
 
     duplicate_sql = """
@@ -203,7 +201,13 @@ def create_enrollment(
           AND class_section_id = :class_section_id
     """
 
-    insert_sql = """
+    count_sql = """
+        SELECT COUNT(*) AS enrolled
+        FROM enrollments
+        WHERE class_section_id = :class_section_id
+    """
+
+    insert_enrollment_sql = """
         INSERT INTO enrollments (
             student_id,
             class_section_id
@@ -214,11 +218,29 @@ def create_enrollment(
         )
     """
 
+    insert_event_sql = """
+        INSERT INTO enrollment_events (
+            student_id,
+            class_section_id,
+            event_type,
+            source,
+            dataset
+        )
+        VALUES (
+            :student_id,
+            :class_section_id,
+            'CREATED',
+            'api',
+            'demo'
+        )
+    """
+
     parameters = {
         "student_id": payload.student_id,
         "class_section_id": payload.class_section_id,
     }
 
+    # Toan bo qua trinh dang ky nam trong cung mot transaction.
     with engine.begin() as connection:
 
         student = connection.execute(
@@ -254,14 +276,29 @@ def create_enrollment(
                 detail="Sinh vien da dang ky lop nay",
             )
 
-        if int(section["enrolled"]) >= int(section["capacity"]):
+        count_row = connection.execute(
+            text(count_sql),
+            {"class_section_id": payload.class_section_id},
+        ).mappings().first()
+
+        enrolled = int(count_row["enrolled"])
+
+        if enrolled >= int(section["capacity"]):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Lop hoc phan da het cho",
             )
 
+        # Buoc 1: tao enrollment.
         connection.execute(
-            text(insert_sql),
+            text(insert_enrollment_sql),
+            parameters,
+        )
+
+        # Buoc 2: ghi audit event.
+        # Neu buoc nay loi thi enrollment ben tren cung rollback.
+        connection.execute(
+            text(insert_event_sql),
             parameters,
         )
 
@@ -281,19 +318,40 @@ def delete_enrollment(
     class_section_id: str,
 ) -> Response:
 
-    sql = """
+    delete_sql = """
         DELETE FROM enrollments
         WHERE student_id = :student_id
           AND class_section_id = :class_section_id
     """
 
+    insert_event_sql = """
+        INSERT INTO enrollment_events (
+            student_id,
+            class_section_id,
+            event_type,
+            source,
+            dataset
+        )
+        VALUES (
+            :student_id,
+            :class_section_id,
+            'CANCELLED',
+            'api',
+            'demo'
+        )
+    """
+
+    parameters = {
+        "student_id": student_id,
+        "class_section_id": class_section_id,
+    }
+
+    # DELETE va audit event cung nam trong mot transaction.
     with engine.begin() as connection:
+
         result = connection.execute(
-            text(sql),
-            {
-                "student_id": student_id,
-                "class_section_id": class_section_id,
-            },
+            text(delete_sql),
+            parameters,
         )
 
         if result.rowcount == 0:
@@ -301,6 +359,11 @@ def delete_enrollment(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Khong tim thay dang ky can huy",
             )
+
+        connection.execute(
+            text(insert_event_sql),
+            parameters,
+        )
 
     return Response(
         status_code=status.HTTP_204_NO_CONTENT
