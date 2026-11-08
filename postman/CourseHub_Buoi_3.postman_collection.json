@@ -1,0 +1,168 @@
+{
+  "info": {
+    "name": "CourseHub API - Buoi 3",
+    "description": "Postman collection cho bai thuc hanh CourseHub Buoi 3",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": ["{{base_url}}"],
+          "path": ["health"]
+        }
+      }
+    },
+    {
+      "name": "02 List courses",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/courses",
+          "host": ["{{base_url}}"],
+          "path": ["courses"]
+        }
+      }
+    },
+    {
+      "name": "03 Search courses",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/courses?q=web",
+          "host": ["{{base_url}}"],
+          "path": ["courses"],
+          "query": [
+            {
+              "key": "q",
+              "value": "web"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "04 Course detail",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/courses/INT2204",
+          "host": ["{{base_url}}"],
+          "path": ["courses", "INT2204"]
+        }
+      }
+    },
+    {
+      "name": "05 Available sections",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/sections?available_only=true",
+          "host": ["{{base_url}}"],
+          "path": ["sections"],
+          "query": [
+            {
+              "key": "available_only",
+              "value": "true"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "06 Student enrollments",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/students/22000001/enrollments",
+          "host": ["{{base_url}}"],
+          "path": ["students", "22000001", "enrollments"]
+        }
+      }
+    },
+    {
+      "name": "07 Create enrollment",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"student_id\": \"22000004\",\n  \"class_section_id\": \"WEB-01\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/enrollments",
+          "host": ["{{base_url}}"],
+          "path": ["enrollments"]
+        }
+      }
+    },
+    {
+      "name": "08 Duplicate enrollment",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"student_id\": \"22000004\",\n  \"class_section_id\": \"WEB-01\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/enrollments",
+          "host": ["{{base_url}}"],
+          "path": ["enrollments"]
+        }
+      }
+    },
+    {
+      "name": "09 Validation error",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"student_id\": \"123\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/enrollments",
+          "host": ["{{base_url}}"],
+          "path": ["enrollments"]
+        }
+      }
+    },
+    {
+      "name": "10 Delete enrollment",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/enrollments/22000004/WEB-01",
+          "host": ["{{base_url}}"],
+          "path": ["enrollments", "22000004", "WEB-01"]
+        }
+      }
+    }
+  ]
+}
